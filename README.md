@@ -4,6 +4,7 @@ A Model Context Protocol (MCP) server for creating, editing, and playing VibeTid
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![smithery badge](https://smithery.ai/badge/@banjtheman/vibe_tide_mcp)](https://smithery.ai/server/@banjtheman/vibe_tide_mcp)
 
 ## Features
 
@@ -15,6 +16,14 @@ A Model Context Protocol (MCP) server for creating, editing, and playing VibeTid
 - **Metadata Management**: Edit level properties like spawn rates and difficulty
 
 ## Installation
+
+### Installing via Smithery
+
+To install VibeTide Level Editor Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@banjtheman/vibe_tide_mcp):
+
+```bash
+npx -y @smithery/cli install @banjtheman/vibe_tide_mcp --client claude
+```
 
 ### Option 1: Using UVX (Recommended)
 

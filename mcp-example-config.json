@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "vibe_tide_player": {
+        "command": "uv",
+        "args": [
+          "--directory",
+          "/PATH/TO/VIBE_TIDE",
+          "run",
+          "vibe_tide_mcp_server.py"
+        ]
+      }
+  }
+} 

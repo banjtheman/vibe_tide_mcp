@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vibe-tide-mcp-server"
+version = "0.1.0"
+description = "VibeTide MCP Server - A Model Context Protocol server for VibeTide platformer levels"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Banjo Obayomi", email = "banjtheman@gmail.com"}
+]
+keywords = ["mcp", "server", "vibe-tide", "platformer", "game", "level-editor"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "fastmcp>=0.4.0",
+    "mcp>=1.0.0",
+    "Pillow>=10.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/banjtheman/vibe_tide_mcp"
+Documentation = "https://github.com/banjtheman/vibe_tide_mcp#readme"
+Repository = "https://github.com/banjtheman/vibe_tide_mcp"
+Issues = "https://github.com/banjtheman/vibe_tide_mcp/issues"
+
+[project.scripts]
+vibe-tide-mcp-server = "vibe_tide_mcp_server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vibe_tide_mcp_server*"]
+
+[tool.setuptools.package-data]
+vibe_tide_mcp_server = ["*.md"] 
+
+[tool.uv.workspace]
+members = ["vibe_tide"]

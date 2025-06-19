@@ -1,18 +1,16 @@
-version: 0.1.0
-metadata:
-  name: vibe-tide-mcp-server
-  description: A Model Context Protocol server for VibeTide platformer levels - create, edit, and play 2D platformer levels
-  author: Banjo Obayomi
-  homepage: https://github.com/banjtheman/vibe_tide_mcp
-  license: MIT
-  tags:
-    - game
-    - platformer
-    - level-editor
-    - vibe-tide
-    - 2d-game
-    - level-creation
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
-servers:
-  - name: vibe-tide-mcp-server
-    module: vibe_tide_mcp_server 
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    {}
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({
+      command: 'python',
+      args: ['vibe_tide_mcp_server.py'],
+      env: {}
+    })
+  exampleConfig: {} 

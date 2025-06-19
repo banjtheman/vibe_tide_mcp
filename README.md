@@ -196,7 +196,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Related Projects
 
-- [VibeTide Player](https://vibetideplayer.banjtheman.xyz/) - Web player for VibeTide levels
 - [Model Context Protocol](https://modelcontextprotocol.io/) - Learn more about MCP
 
 ## Support

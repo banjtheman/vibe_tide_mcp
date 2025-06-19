@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+      "vibe-tide": {
+        "command": "uvx",
+        "args": ["--from", "vibe-tide-mcp-server", "vibe-tide-mcp-server"]
+      }
+    }
+  }

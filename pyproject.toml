@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "vibe-tide-mcp-server"
@@ -37,15 +37,9 @@ Documentation = "https://github.com/banjtheman/vibe_tide_mcp#readme"
 Repository = "https://github.com/banjtheman/vibe_tide_mcp"
 Issues = "https://github.com/banjtheman/vibe_tide_mcp/issues"
 
+[tool.hatch.build.targets.wheel]
+only-include = ["vibe_tide_mcp_server.py"]
+sources = ["."]
+
 [project.scripts]
 vibe-tide-mcp-server = "vibe_tide_mcp_server:main"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["vibe_tide_mcp_server*"]
-
-[tool.setuptools.package-data]
-vibe_tide_mcp_server = ["*.md"] 
-
-[tool.uv.workspace]
-members = ["vibe_tide"]

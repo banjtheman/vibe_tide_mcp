@@ -2,9 +2,23 @@
 
 A Model Context Protocol (MCP) server for creating, editing, and playing VibeTide 2D platformer levels. This server provides tools for level manipulation, visualization, and gameplay through the MCP protocol.
 
+![VibeTide Hero Image](media/vibe_tide_wide.jpeg)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![smithery badge](https://smithery.ai/badge/@banjtheman/vibe_tide_mcp)](https://smithery.ai/server/@banjtheman/vibe_tide_mcp)
+[![PyPI version](https://badge.fury.io/py/vibe-tide-mcp-server.svg)](https://badge.fury.io/py/vibe-tide-mcp-server)
+
+## 🎮 Screenshots & Demo
+
+### Level Creation and Editing
+![VibeTide Level Creation](media/claude_vibe_tide.png)
+*Create beautiful 2D platformer levels with AI assistance*
+
+### Gameplay Preview
+![VibeTide Gameplay](media/vibetide_level_1.gif)
+*Play your created levels in the web player*
+
 
 ## Features
 

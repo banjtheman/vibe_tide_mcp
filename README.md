@@ -33,10 +33,10 @@ A Model Context Protocol (MCP) server for creating, editing, and playing VibeTid
 
 ### Installing via Smithery
 
-To install VibeTide Level Editor Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@banjtheman/vibe_tide_mcp):
+To install VibeTide Level Editor Server automatically via [Smithery](https://smithery.ai/server/@banjtheman/vibe_tide_mcp):
 
 ```bash
-npx -y @smithery/cli install @banjtheman/vibe_tide_mcp --client claude
+npx -y @smithery/cli install @banjtheman/vibe_tide_mcp
 ```
 
 ### Option 1: Using UVX (Recommended)

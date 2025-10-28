@@ -7,4 +7,5 @@ build:
 
 startCommand:
   type: "http"
-  # No configuration needed for this server
+  # No configuration schema needed - this server works without any configuration
+  testConfig: {}  # Empty config for testing

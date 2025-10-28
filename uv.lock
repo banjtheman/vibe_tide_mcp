@@ -653,6 +653,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "mcp" },
     { name = "pillow" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -660,4 +661,5 @@ requires-dist = [
     { name = "fastmcp", specifier = ">=0.4.0" },
     { name = "mcp", specifier = ">=1.0.0" },
     { name = "pillow", specifier = ">=10.0.0" },
+    { name = "uvicorn", specifier = ">=0.34.0" },
 ]

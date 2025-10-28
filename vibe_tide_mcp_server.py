@@ -21,7 +21,9 @@ import os
 import tempfile
 from typing import Any, Dict, List, Optional
 
+import uvicorn
 from mcp.server.fastmcp import FastMCP
+from starlette.middleware.cors import CORSMiddleware
 from PIL import Image, ImageDraw, ImageFont
 
 # Configure logging
@@ -1163,7 +1165,10 @@ async def get_tile_reference() -> Dict[str, Any]:
 
 def main():
     """Main entry point for the VibeTide MCP Server"""
+    transport_mode = os.getenv("TRANSPORT", "stdio")
+
     logger.info("Starting VibeTide MCP Server...")
+    logger.info(f"Transport mode: {transport_mode}")
     logger.info(f"Web Player URL: {VIBE_TIDE_CONFIG['web_player_url']}")
     logger.info("Available tools:")
     logger.info("  - view_level: View level with ASCII visualization")
@@ -1180,7 +1185,34 @@ def main():
     logger.info("      AI level generation uses VibeTide agent prompts in docstrings")
     logger.info("      for MCP client integration")
 
-    mcp.run()
+    if transport_mode == "http":
+        # HTTP mode for Smithery deployment
+        logger.info("Starting in HTTP mode...")
+
+        # Setup Starlette app with CORS for cross-origin requests
+        app = mcp.streamable_http_app()
+
+        # Add CORS middleware for browser based clients
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["*"],
+            expose_headers=["mcp-session-id", "mcp-protocol-version"],
+            max_age=86400,
+        )
+
+        # Use Smithery-required PORT environment variable
+        port = int(os.environ.get("PORT", 8081))
+        logger.info(f"Listening on port {port}")
+
+        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+
+    else:
+        # STDIO mode for local development and backward compatibility
+        logger.info("Starting in STDIO mode...")
+        mcp.run()
 
 
 # Run the server when the script is executed directly

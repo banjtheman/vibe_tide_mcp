@@ -1,0 +1,15 @@
+{
+    "name": "Vibe Tide",
+    "short_name": "Vibe Tide",
+    "start_url": "index.html",
+    "display": "fullscreen",
+    "background_color": "#BF3B00",
+    "theme_color": "#000",
+    "description": "Lets Vibe",
+    "icons": [{
+      "src": "TemplateData/icons/unity-logo-dark.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }]
+  }

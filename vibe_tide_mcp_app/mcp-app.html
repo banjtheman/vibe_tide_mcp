@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Vibe Tide Editor</title>
+  </head>
+  <body>
+    <main class="app" id="app-root">
+      <header class="top-bar">
+        <div class="brand">
+          <div class="logo-glow"></div>
+          <h1 class="logo-text">
+            <span class="logo-vibe">VIBE</span>
+            <span class="logo-tide">TIDE</span>
+          </h1>
+          <p class="tagline">Level Studio</p>
+        </div>
+        <nav class="tab-nav" id="tab-nav">
+          <button class="tab-btn active" data-tab="edit" id="tab-edit">
+            <span class="tab-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </span>
+            <span class="tab-label">Edit</span>
+            <span class="tab-glow"></span>
+          </button>
+          <button class="tab-btn" data-tab="play" id="tab-play">
+            <span class="tab-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+            </span>
+            <span class="tab-label">Play</span>
+            <span class="tab-glow"></span>
+          </button>
+          <div class="tab-indicator" id="tab-indicator"></div>
+        </nav>
+        <div class="top-actions">
+          <div class="status-pill" id="status-pill">
+            <span class="status-dot"></span>
+            <span id="status-text">Ready</span>
+          </div>
+          <button id="send-model-btn" class="btn-glow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            Send to Model
+          </button>
+        </div>
+      </header>
+
+      <section class="tab-content" id="tab-content">
+        <!-- EDIT TAB -->
+        <div class="tab-panel active" data-panel="edit" id="panel-edit">
+          <div class="edit-layout">
+            <div class="editor-wrapper">
+              <!-- Canvas Chrome -->
+              <div class="editor-chrome">
+                <div class="editor-toolbar">
+                  <div class="toolbar-left">
+                    <span class="canvas-size" id="canvas-size">50 × 22</span>
+                    <span class="hint">Click or drag to paint</span>
+                  </div>
+                  <div class="toolbar-right">
+                    <button id="new-level-btn" class="btn-icon" title="New Level">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    </button>
+                    <button id="copy-encoded-btn" class="btn-icon" title="Copy Encoded">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="grid-container">
+                  <div class="edit-grid" id="edit-grid"></div>
+                  <div class="loading-overlay" id="loading-overlay">
+                    <div class="loading-spinner"></div>
+                    <p>Generating level...</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Controls Panel Below -->
+              <div class="editor-controls">
+                <!-- Tile Palette -->
+                <div class="control-section tiles-section">
+                  <h3>Tiles</h3>
+                  <div class="palette-tiles" id="palette"></div>
+                </div>
+
+                <!-- Level Info -->
+                <div class="control-section">
+                  <h3>Level Info</h3>
+                  <div class="section-fields">
+                    <div class="field-row">
+                      <label>Name</label>
+                      <input id="level-name" type="text" placeholder="Untitled level">
+                    </div>
+                    <div class="field-row">
+                      <label>Description</label>
+                      <input id="level-description" type="text" placeholder="Short description">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Dimensions -->
+                <div class="control-section">
+                  <h3>Dimensions</h3>
+                  <div class="section-fields">
+                    <div class="field-row">
+                      <label>Width</label>
+                      <input id="level-width" type="number" min="10" max="120" value="50">
+                    </div>
+                    <div class="field-row">
+                      <label>Height</label>
+                      <input id="level-height" type="number" min="10" max="60" value="22">
+                    </div>
+                    <button id="resize-btn" class="btn-sm">Apply Size</button>
+                  </div>
+                </div>
+
+                <!-- Spawn Settings -->
+                <div class="control-section">
+                  <h3>Spawn Settings</h3>
+                  <div class="section-fields">
+                    <div class="field-row">
+                      <label>Max Enemies</label>
+                      <input id="max-enemies" type="number" min="0" max="10" value="5">
+                    </div>
+                    <div class="field-row">
+                      <label>Enemy %</label>
+                      <input id="enemy-spawn" type="number" min="0" max="100" value="10">
+                    </div>
+                    <div class="field-row">
+                      <label>Coin %</label>
+                      <input id="coin-spawn" type="number" min="0" max="100" value="15">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Import -->
+                <div class="control-section">
+                  <h3>Import Level</h3>
+                  <div class="section-fields">
+                    <input id="encoded-input" type="text" placeholder="Paste encoded level string">
+                    <button id="load-encoded-btn" class="btn-sm">Load</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PLAY TAB -->
+        <div class="tab-panel" data-panel="play" id="panel-play">
+          <div class="play-layout">
+            <div class="player-wrapper">
+              <div class="player-chrome">
+                <div class="player-controls">
+                  <button id="play-btn" class="btn-play">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 2v6h-6"/>
+                      <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+                      <path d="M3 22v-6h6"/>
+                      <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                    </svg>
+                    Restart Level
+                  </button>
+                  <button id="open-new-tab-btn" class="btn-ghost">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Open in Tab
+                  </button>
+                </div>
+                <div class="player-frame">
+                  <div class="player-overlay" id="player-overlay">
+                    <div class="play-prompt">
+                      <div class="play-icon-ring">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                          <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                      </div>
+                      <p>Press Play to launch your level</p>
+                    </div>
+                  </div>
+                  <iframe id="unity-frame" title="Vibe Tide Player" allow="autoplay; fullscreen; gamepad; xr-spatial-tracking; accelerometer; gyroscope; clipboard-write" allowfullscreen></iframe>
+                </div>
+              </div>
+              <div class="player-meta">
+                <div class="meta-item">
+                  <span class="meta-label">Encoded Level</span>
+                  <code id="encoded-preview">(empty)</code>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="ambient-waves">
+        <div class="wave wave-1"></div>
+        <div class="wave wave-2"></div>
+        <div class="wave wave-3"></div>
+      </div>
+    </main>
+
+    <script type="module" src="/src/mcp-app.ts"></script>
+  </body>
+</html>

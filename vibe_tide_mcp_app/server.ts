@@ -541,10 +541,10 @@ export function createServer(): McpServer {
       _meta: {
         ui: {
           csp: {
-            frameDomains: ["http://localhost:3001"],
-            connectDomains: ["http://localhost:3001"],
+            frameDomains: ["http://localhost:*", "blob:"],
+            connectDomains: ["http://localhost:*"],
             resourceDomains: [
-              "http://localhost:3001",
+              "http://localhost:*",
               "https://fonts.googleapis.com",
               "https://fonts.gstatic.com",
             ],
@@ -563,10 +563,10 @@ export function createServer(): McpServer {
             _meta: {
               ui: {
                 csp: {
-                  frameDomains: ["http://localhost:3001"],
-                  connectDomains: ["http://localhost:3001"],
+                  frameDomains: ["http://localhost:*", "blob:"],
+                  connectDomains: ["http://localhost:*"],
                   resourceDomains: [
-                    "http://localhost:3001",
+                    "http://localhost:*",
                     "https://fonts.googleapis.com",
                     "https://fonts.gstatic.com",
                   ],
@@ -582,8 +582,27 @@ export function createServer(): McpServer {
   return server;
 }
 
+// Helper to find an available port
+async function findAvailablePort(startPort: number, maxAttempts = 10): Promise<number> {
+  const net = await import("net");
+
+  for (let port = startPort; port < startPort + maxAttempts; port++) {
+    const available = await new Promise<boolean>((resolve) => {
+      const server = net.createServer();
+      server.once("error", () => resolve(false));
+      server.once("listening", () => {
+        server.close();
+        resolve(true);
+      });
+      server.listen(port);
+    });
+    if (available) return port;
+  }
+  throw new Error(`No available port found between ${startPort} and ${startPort + maxAttempts - 1}`);
+}
+
 // Start HTTP server for Unity game (runs alongside stdio MCP)
-const GAME_PORT = 3001;
+const GAME_PORT_START = 3001;
 const GAME_PATH = path.join(import.meta.dirname, "VibeTideMin");
 
 const gameApp = express();
@@ -600,8 +619,14 @@ gameApp.use((req, res, next) => {
 });
 
 gameApp.use(express.static(GAME_PATH));
-createHttpServer(gameApp).listen(GAME_PORT, () => {
-  console.error(`[Vibe Tide] Game server: http://localhost:${GAME_PORT}`);
+
+// Start game server on available port
+findAvailablePort(GAME_PORT_START).then((port) => {
+  createHttpServer(gameApp).listen(port, () => {
+    console.error(`[Vibe Tide] Game server: http://localhost:${port}`);
+  });
+}).catch((err) => {
+  console.error("Failed to start game server:", err);
 });
 
 async function main() {

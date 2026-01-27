@@ -39,9 +39,35 @@ const TILE_DEFS: TileDef[] = [
   { id: 7, name: "Water", label: "W", color: "#3b82f6" },
 ];
 
-const PLAYER_BASE_URL = "http://localhost:3001";
+// Auto-detect game server port
+let PLAYER_BASE_URL = "http://localhost:3001";
+let gameServerReady: Promise<string>;
 
-const app = new App({ name: "Vibe Tide Editor", version: "0.1.0" });
+async function findGameServerPort(): Promise<string> {
+  for (let port = 3001; port <= 3010; port++) {
+    try {
+      const response = await fetch(`http://localhost:${port}/index.html`, {
+        method: "GET",
+        signal: AbortSignal.timeout(1000)
+      });
+      if (response.ok) {
+        return `http://localhost:${port}`;
+      }
+    } catch {
+      // Port not available, try next
+    }
+  }
+  return "http://localhost:3001"; // fallback
+}
+
+// Initialize on load - store promise so functions can await it
+gameServerReady = findGameServerPort().then((url) => {
+  PLAYER_BASE_URL = url;
+  console.log(`[MCP App] Game server detected at: ${url}`);
+  return url;
+});
+
+const app = new App({ name: "Vibe Tide Editor", version: "0.1.2" });
 
 // DOM Elements
 const appRoot = document.getElementById("app-root") as HTMLElement;
@@ -441,6 +467,9 @@ async function updatePlayerFrame() {
   statusText.textContent = "Loading game...";
 
   try {
+    // Ensure game server port is detected
+    await gameServerReady;
+
     // Fetch the Unity game HTML
     const response = await fetch(`${PLAYER_BASE_URL}/index.html`);
     if (!response.ok) {
@@ -812,7 +841,8 @@ playBtn.addEventListener("click", () => {
   updatePlayerFrame();
 });
 
-openTabBtn.addEventListener("click", () => {
+openTabBtn.addEventListener("click", async () => {
+  await gameServerReady;
   refreshEncoded();
   const encoded = currentLevel.encodedLevel ?? "";
   if (encoded.length === 0) return;

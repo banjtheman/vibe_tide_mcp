@@ -1,3 +1,4 @@
+import net from "net";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -6,8 +7,26 @@ import cors from "cors";
 import type { Request, Response } from "express";
 import { createServer } from "./server.js";
 
+// Helper to find an available port
+async function findAvailablePort(startPort: number, maxAttempts = 10): Promise<number> {
+  for (let port = startPort; port < startPort + maxAttempts; port++) {
+    const available = await new Promise<boolean>((resolve) => {
+      const server = net.createServer();
+      server.once("error", () => resolve(false));
+      server.once("listening", () => {
+        server.close();
+        resolve(true);
+      });
+      server.listen(port);
+    });
+    if (available) return port;
+  }
+  throw new Error(`No available port found between ${startPort} and ${startPort + maxAttempts - 1}`);
+}
+
 export async function startStreamableHTTPServer(createServerFn: () => McpServer): Promise<void> {
-  const port = parseInt(process.env.PORT ?? "3001", 10);
+  const startPort = parseInt(process.env.PORT ?? "3000", 10);
+  const port = await findAvailablePort(startPort);
   const app = createMcpExpressApp({ host: "0.0.0.0" });
 
   app.use(cors());

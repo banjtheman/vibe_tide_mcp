@@ -1,19 +1,44 @@
 {
   "name": "vibe-tide-mcp-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
-  "private": true,
+  "description": "MCP App for creating, editing, and playing Vibe Tide levels inside Claude Desktop",
+  "author": "banjtheman",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/banjtheman/vibe_tide_mcp"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "game",
+    "level-editor",
+    "unity"
+  ],
+  "bin": {
+    "vibe-tide-mcp-app": "./bin/vibe-tide.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "VibeTideMin",
+    "server.ts",
+    "src"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "serve": "tsx server.ts",
-    "start": "concurrently -n ui,server \"vite build --watch\" \"cross-env NODE_ENV=development tsx watch main.ts\""
+    "start": "concurrently -n ui,server \"vite build --watch\" \"cross-env NODE_ENV=development tsx watch main.ts\"",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "tsx": "^4.21.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -22,7 +47,6 @@
     "@types/node": "^25.0.10",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-singlefile": "^2.3.0"

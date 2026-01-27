@@ -22,36 +22,32 @@ Vibe Tide MCP App is an [MCP App](https://github.com/modelcontextprotocol/ext-ap
 
 ### Installation
 
-1. Clone this repository and navigate to the app directory:
-```bash
-cd vibe_tide_mcp_app
-npm install
-npm run build
-```
+Add this to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
-2. Add the server to your MCP client config. For Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 ```json
 {
   "mcpServers": {
     "vibe-tide": {
       "command": "npx",
-      "args": [
-        "--silent",
-        "tsx",
-        "/path/to/vibe_tide_mcp_app/server.ts"
-      ]
+      "args": ["-y", "vibe-tide-mcp-app"]
     }
   }
 }
 ```
 
-3. Restart your MCP client.
+Restart Claude Desktop and you're ready to go.
 
 ### Usage
 
-Once configured, ask Claude to create a level:
+Once configured, ask Claude to create a level. Here are some example prompts:
 
-> "Create a beach level with palm trees and water hazards"
+> "Create a simple vibe tide level with grass, water, and some rock platforms"
+
+> "Can you make an easy vibe tide level (40x25) that features grass and water blocks, 1 enemy with lots of coins"
+
+> "Can you make a big vibe tide level 80x25 that features grass, yellow blocks, water, fire and rock blocks with 6 enemies and high spawn chance, with lots of coins"
+
+Available tile types: Empty, Grass, Rock, Yellow, Ice, Fire, Spikes, Water
 
 The level editor will appear in the conversation. Use the tabs to:
 - **Edit** — Click tiles to paint, adjust dimensions and game parameters
@@ -80,7 +76,28 @@ The Unity game loads via a blob URL technique that works within typical MCP clie
 
 ## Development
 
-To run with hot-reload for UI development:
+To run from source:
+
+```bash
+git clone https://github.com/banjtheman/vibe_tide_mcp.git
+cd vibe_tide_mcp/vibe_tide_mcp_app
+npm install
+npm run build
+```
+
+Add to your Claude Desktop config:
+```json
+{
+  "mcpServers": {
+    "vibe-tide": {
+      "command": "npx",
+      "args": ["--silent", "tsx", "/path/to/vibe_tide_mcp_app/server.ts"]
+    }
+  }
+}
+```
+
+For hot-reload during UI development:
 ```bash
 npm start
 ```

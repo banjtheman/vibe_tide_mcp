@@ -39,10 +39,11 @@ const TILE_DEFS: TileDef[] = [
   { id: 7, name: "Water", label: "W", color: "#3b82f6" },
 ];
 
-// Auto-detect game server port
+// Game server URL for iframe fallback mode (only used in non-CSP-restricted hosts)
 let PLAYER_BASE_URL = "http://localhost:3001";
-let gameServerReady: Promise<string>;
+let gameServerReady: Promise<string> | null = null;
 
+// Lazy port detection - only runs when iframe mode is needed
 async function findGameServerPort(): Promise<string> {
   for (let port = 3001; port <= 3010; port++) {
     try {
@@ -60,14 +61,20 @@ async function findGameServerPort(): Promise<string> {
   return "http://localhost:3001"; // fallback
 }
 
-// Initialize on load - store promise so functions can await it
-gameServerReady = findGameServerPort().then((url) => {
-  PLAYER_BASE_URL = url;
-  console.log(`[MCP App] Game server detected at: ${url}`);
-  return url;
-});
+// Don't auto-detect on load - this causes CSP errors in Claude Desktop
+// Will be called lazily only when iframe mode is needed
+function ensureGameServerReady(): Promise<string> {
+  if (!gameServerReady) {
+    gameServerReady = findGameServerPort().then((url) => {
+      PLAYER_BASE_URL = url;
+      console.log(`[MCP App] Game server detected at: ${url}`);
+      return url;
+    });
+  }
+  return gameServerReady;
+}
 
-const app = new App({ name: "Vibe Tide Editor", version: "0.1.2" });
+const app = new App({ name: "Vibe Tide Editor", version: "0.1.4" });
 
 // DOM Elements
 const appRoot = document.getElementById("app-root") as HTMLElement;
@@ -493,6 +500,12 @@ function cleanupUnity() {
     delete (window as any)._vibeTideOriginalFetch;
   }
 
+  // Restore original alert if overridden
+  if ((window as any)._originalAlert) {
+    window.alert = (window as any)._originalAlert;
+    delete (window as any)._originalAlert;
+  }
+
   // Clean up Unity globals
   const unityGlobals = [
     'createUnityInstance', 'unityFramework', 'Module',
@@ -519,8 +532,25 @@ async function updatePlayerFrameDirect() {
     return;
   }
 
-  statusText.textContent = "Loading game (direct mode)...";
+  statusText.textContent = "Loading game...";
   unityCleanedUp = false;
+
+  // Stub navigator.getGamepads to prevent SecurityError spam
+  // (gamepad API is blocked by permissions policy in sandboxed contexts)
+  try {
+    Object.defineProperty(navigator, 'getGamepads', {
+      value: function() { return []; },
+      writable: true,
+      configurable: true
+    });
+  } catch (e) {
+    // Fallback if defineProperty fails
+    try { (navigator as any).getGamepads = function() { return []; }; } catch (e2) {}
+  }
+
+  // Stub window.alert (blocked in sandboxed documents)
+  (window as any)._originalAlert = window.alert;
+  window.alert = function(msg: any) { console.warn('[Unity Alert]', msg); };
 
   try {
     console.log('[Vibe Tide] Fetching Unity bundle via MCP tool...');
@@ -738,7 +768,7 @@ async function updatePlayerFrameDirect() {
     );
 
     console.log('[Vibe Tide] Unity instance created!');
-    statusText.textContent = "Playing (direct)";
+    statusText.textContent = "Playing";
 
     // Hide overlay
     if (playerOverlay) {
@@ -767,7 +797,7 @@ async function updatePlayerFrame() {
 
   try {
     // Ensure game server port is detected
-    await gameServerReady;
+    await ensureGameServerReady();
 
     // Fetch the Unity game HTML
     const response = await fetch(`${PLAYER_BASE_URL}/index.html`);
@@ -1142,7 +1172,7 @@ playBtn.addEventListener("click", () => {
 });
 
 openTabBtn.addEventListener("click", async () => {
-  await gameServerReady;
+  await ensureGameServerReady();
   refreshEncoded();
   const encoded = currentLevel.encodedLevel ?? "";
   if (encoded.length === 0) return;

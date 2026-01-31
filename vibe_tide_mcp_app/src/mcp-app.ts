@@ -132,9 +132,12 @@ function switchTab(tab: "edit" | "play") {
   if (tab === "play") {
     syncLevelFromInputs();
     refreshEncoded();
-    updatePlayerFrame();
+    // Try direct rendering first (bypasses CSP), fall back to iframe
+    updatePlayerFrameDirect().catch(() => updatePlayerFrame());
   } else {
     statusText.textContent = "Editing";
+    // Cleanup Unity when leaving play tab
+    cleanupUnity();
   }
 }
 
@@ -453,6 +456,302 @@ function loadEncoded(encoded: string) {
 
 // Cache for the blob URL so we can revoke it
 let currentBlobUrl: string | null = null;
+
+// Track Unity instance for cleanup
+let currentUnityInstance: any = null;
+let unityCleanedUp = false;
+
+// Helper to convert base64 to ArrayBuffer
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+// Cleanup Unity instance
+function cleanupUnity() {
+  if (unityCleanedUp) return;
+  unityCleanedUp = true;
+
+  console.log('[Vibe Tide] Cleaning up Unity instance...');
+
+  if (currentUnityInstance) {
+    try {
+      currentUnityInstance.Quit();
+    } catch (e) {
+      // Ignore
+    }
+    currentUnityInstance = null;
+  }
+
+  // Restore original fetch if overridden
+  if ((window as any)._vibeTideOriginalFetch) {
+    window.fetch = (window as any)._vibeTideOriginalFetch;
+    delete (window as any)._vibeTideOriginalFetch;
+  }
+
+  // Clean up Unity globals
+  const unityGlobals = [
+    'createUnityInstance', 'unityFramework', 'Module',
+    'VIBE_TIDE_LEVEL', 'buildMockLevelResponse'
+  ];
+  unityGlobals.forEach(name => {
+    try {
+      delete (window as any)[name];
+    } catch (e) {
+      // Ignore
+    }
+  });
+}
+
+// Iframe-free Unity player - renders directly without iframe
+// This bypasses Claude Desktop's CSP restrictions
+async function updatePlayerFrameDirect() {
+  if (!currentLevel.encodedLevel) {
+    refreshEncoded();
+  }
+  const encoded = currentLevel.encodedLevel ?? "";
+  if (encoded.length === 0) {
+    statusText.textContent = "Missing encoded level";
+    return;
+  }
+
+  statusText.textContent = "Loading game (direct mode)...";
+  unityCleanedUp = false;
+
+  try {
+    console.log('[Vibe Tide] Fetching Unity bundle via MCP tool...');
+
+    // Call MCP tool to get Unity bundle as base64
+    const result = await app.callServerTool({
+      name: 'ui_get_unity_bundle',
+      arguments: {},
+    });
+
+    if (result.structuredContent?.error) {
+      throw new Error(result.structuredContent.error);
+    }
+
+    const { loaderJs, frameworkJs, wasmBinary, dataBinary, sizes } = result.structuredContent;
+
+    if (!loaderJs || !frameworkJs || !wasmBinary || !dataBinary) {
+      throw new Error('Missing Unity bundle files');
+    }
+
+    console.log('[Vibe Tide] Unity bundle received:', {
+      loaderJs: sizes?.loaderJs,
+      frameworkJs: sizes?.frameworkJs,
+      wasmBinary: sizes?.wasmBinary,
+      dataBinary: sizes?.dataBinary,
+    });
+
+    // Convert base64 to ArrayBuffers
+    const frameworkJsText = atob(frameworkJs);
+    const wasmArrayBuffer = base64ToArrayBuffer(wasmBinary);
+    const dataArrayBuffer = base64ToArrayBuffer(dataBinary);
+
+    console.log('[Vibe Tide] Converted to ArrayBuffers:', {
+      wasmSize: wasmArrayBuffer.byteLength,
+      dataSize: dataArrayBuffer.byteLength,
+    });
+
+    // Hide iframe, show canvas
+    unityFrame.style.display = 'none';
+
+    // Get or create Unity canvas
+    let unityCanvas = document.getElementById('unity-canvas') as HTMLCanvasElement;
+    if (!unityCanvas) {
+      unityCanvas = document.createElement('canvas');
+      unityCanvas.id = 'unity-canvas';
+      unityCanvas.style.cssText = 'width: 100%; height: 100%; background: #000;';
+      unityCanvas.tabIndex = -1;
+      unityFrame.parentElement?.appendChild(unityCanvas);
+    }
+    unityCanvas.style.display = 'block';
+
+    // Set up level data injection (same as iframe version)
+    (window as any).VIBE_TIDE_LEVEL = encoded;
+
+    // Build mock level response function (same as iframe version)
+    (window as any).buildMockLevelResponse = function() {
+      const levelData = decodeLevelForUnity(encoded);
+      const maxEnemies = Math.max(1, parseInt(levelData.maxEnemies as any) || 5);
+      const enemySpawnChance = parseFloat(levelData.enemySpawnChance as any) || 10.0;
+      const coinSpawnChance = parseFloat(levelData.coinSpawnChance as any) || 0.15;
+
+      const responseBody = {
+        level: {
+          'level-id': 'embedded-level',
+          'name': 'Embedded Level',
+          'encoded_level': encoded,
+          'tiles': levelData.tiles,
+          'width': levelData.tiles && levelData.tiles[0] ? levelData.tiles[0].length : 30,
+          'height': levelData.tiles ? levelData.tiles.length : 30,
+          'maxEnemies': maxEnemies,
+          'enemySpawnChance': enemySpawnChance,
+          'coinSpawnChance': coinSpawnChance
+        }
+      };
+      return JSON.stringify(responseBody);
+    };
+
+    // Helper to decode level (same logic as iframe version)
+    function decodeLevelForUnity(encodedLevel: string) {
+      const result: any = { tiles: null, maxEnemies: 5, enemySpawnChance: 10, coinSpawnChance: 15 };
+      try {
+        const encoder = new LevelEncoder();
+        const decoded = encoder.decode(encodedLevel);
+        result.tiles = decoded.tiles;
+        result.maxEnemies = decoded.maxEnemies ?? 5;
+        result.enemySpawnChance = decoded.enemySpawnChance ?? 10;
+        result.coinSpawnChance = decoded.coinSpawnChance ?? 15;
+      } catch (e) {
+        console.error('[Vibe Tide] Failed to decode level:', e);
+      }
+      return result;
+    }
+
+    // Override fetch to intercept Unity file requests and API calls
+    const originalFetch = window.fetch;
+    (window as any)._vibeTideOriginalFetch = originalFetch;
+
+    const wasmBlob = new Blob([wasmArrayBuffer], { type: 'application/wasm' });
+    const dataBlob = new Blob([dataArrayBuffer], { type: 'application/octet-stream' });
+    const frameworkBlob = new Blob([frameworkJsText], { type: 'application/javascript' });
+
+    window.fetch = async function(url: RequestInfo | URL, options?: RequestInit) {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+
+      // Intercept Unity file requests
+      if (urlStr.includes('VibeTideMin.wasm') || urlStr.endsWith('.wasm.unityweb')) {
+        console.log('[Vibe Tide] Intercepted WASM fetch');
+        return new Response(wasmBlob, { status: 200, headers: { 'Content-Type': 'application/wasm' } });
+      }
+      if (urlStr.includes('VibeTideMin.data') || urlStr.endsWith('.data.unityweb')) {
+        console.log('[Vibe Tide] Intercepted data fetch');
+        return new Response(dataBlob, { status: 200, headers: { 'Content-Type': 'application/octet-stream' } });
+      }
+      if (urlStr.includes('VibeTideMin.framework') || urlStr.endsWith('.framework.js.unityweb')) {
+        console.log('[Vibe Tide] Intercepted framework fetch');
+        return new Response(frameworkBlob, { status: 200, headers: { 'Content-Type': 'application/javascript' } });
+      }
+
+      // Intercept API calls for level data
+      if (urlStr.includes('vibe-get-level') || urlStr.includes('execute-api')) {
+        console.log('[Vibe Tide] Intercepted API call, returning level data');
+        return new Response((window as any).buildMockLevelResponse(), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Pass through other requests
+      return originalFetch.call(window, url, options);
+    } as typeof fetch;
+
+    // Also intercept XMLHttpRequest (Unity WebGL uses this)
+    const OriginalXHR = window.XMLHttpRequest;
+    (window as any).XMLHttpRequest = function() {
+      const xhr = new OriginalXHR();
+      const originalOpen = xhr.open;
+      const originalSend = xhr.send;
+      let interceptUrl: string | null = null;
+
+      xhr.open = function(method: string, url: string | URL) {
+        const urlStr = typeof url === 'string' ? url : url.toString();
+        if (urlStr.includes('vibe-get-level') || urlStr.includes('execute-api')) {
+          interceptUrl = urlStr;
+        }
+        return originalOpen.apply(this, arguments as any);
+      };
+
+      xhr.send = function(data?: any) {
+        if (interceptUrl) {
+          console.log('[Vibe Tide] XHR returning mock response');
+          const self = this;
+          setTimeout(() => {
+            Object.defineProperty(self, 'readyState', { writable: true, value: 4 });
+            Object.defineProperty(self, 'status', { writable: true, value: 200 });
+            Object.defineProperty(self, 'responseText', { writable: true, value: (window as any).buildMockLevelResponse() });
+            Object.defineProperty(self, 'response', { writable: true, value: (window as any).buildMockLevelResponse() });
+            if ((self as any).onreadystatechange) (self as any).onreadystatechange();
+            if ((self as any).onload) (self as any).onload();
+          }, 10);
+          return;
+        }
+        return originalSend.apply(this, arguments as any);
+      };
+
+      return xhr;
+    } as any;
+    (window as any).XMLHttpRequest.prototype = OriginalXHR.prototype;
+
+    // Execute the Unity loader script
+    console.log('[Vibe Tide] Executing Unity loader...');
+    const loaderScript = document.createElement('script');
+    loaderScript.textContent = loaderJs;
+    document.head.appendChild(loaderScript);
+
+    // Wait for createUnityInstance to be available
+    await new Promise<void>((resolve) => {
+      const checkInterval = setInterval(() => {
+        if (typeof (window as any).createUnityInstance === 'function') {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 50);
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        resolve();
+      }, 5000);
+    });
+
+    if (typeof (window as any).createUnityInstance !== 'function') {
+      throw new Error('Unity loader failed to initialize createUnityInstance');
+    }
+
+    // Configure Unity instance
+    const config = {
+      dataUrl: 'VibeTideMin.data.unityweb',
+      frameworkUrl: 'VibeTideMin.framework.js.unityweb',
+      codeUrl: 'VibeTideMin.wasm.unityweb',
+      streamingAssetsUrl: 'StreamingAssets',
+      companyName: 'BanjoBuilds',
+      productName: 'Vibe Tide',
+      productVersion: '0.1',
+    };
+
+    console.log('[Vibe Tide] Creating Unity instance...');
+    statusText.textContent = "Starting Unity...";
+
+    currentUnityInstance = await (window as any).createUnityInstance(
+      unityCanvas,
+      config,
+      (progress: number) => {
+        const pct = Math.round(progress * 100);
+        statusText.textContent = `Loading Unity: ${pct}%`;
+      }
+    );
+
+    console.log('[Vibe Tide] Unity instance created!');
+    statusText.textContent = "Playing (direct)";
+
+    // Hide overlay
+    if (playerOverlay) {
+      playerOverlay.classList.add("hidden");
+    }
+
+  } catch (error) {
+    console.error('[Vibe Tide] Direct mode failed:', error);
+    statusText.textContent = "Direct mode failed, trying iframe...";
+    // Fallback to iframe mode
+    await updatePlayerFrame();
+  }
+}
 
 async function updatePlayerFrame() {
   if (!currentLevel.encodedLevel) {
@@ -838,7 +1137,8 @@ sendModelBtn.addEventListener("click", () => {
 playBtn.addEventListener("click", () => {
   syncLevelFromInputs();
   refreshEncoded();
-  updatePlayerFrame();
+  // Try direct rendering first (bypasses CSP), fall back to iframe
+  updatePlayerFrameDirect().catch(() => updatePlayerFrame());
 });
 
 openTabBtn.addEventListener("click", async () => {
@@ -992,6 +1292,7 @@ app.onhostcontextchanged = updateHostContext;
 app.onerror = console.error;
 
 app.onteardown = async () => {
+  cleanupUnity();
   unityFrame.src = "";
   return {};
 };

@@ -6,6 +6,7 @@ import express from "express";
 import { createServer as createHttpServer } from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { z } from "zod/v4-mini";
 
 const DIST_DIR = import.meta.filename.endsWith(".ts")
@@ -529,6 +530,77 @@ export function createServer(): McpServer {
           },
         ],
       };
+    },
+  );
+
+  // UI-only tool: Get Unity bundle for iframe-free rendering
+  // This tool returns all Unity WebGL files as base64 for direct rendering
+  // without iframes, bypassing Claude Desktop's CSP restrictions
+  registerAppTool(
+    server,
+    "ui_get_unity_bundle",
+    {
+      title: "Get Unity Bundle",
+      description: "Get all Unity WebGL files as base64 for direct rendering (no iframe). Used internally by the MCP App.",
+      inputSchema: {},
+      _meta: {
+        ui: {
+          resourceUri,
+          visibility: ["app"],
+        },
+      },
+    },
+    async (): Promise<CallToolResult> => {
+      try {
+        // Use DIST_DIR pattern - when running from source, go up to find VibeTideMin
+        const baseDir = DIST_DIR.endsWith("dist")
+          ? path.join(DIST_DIR, "..")
+          : DIST_DIR;
+        const buildDir = path.join(baseDir, "VibeTideMin", "Build");
+
+        // Read all Unity WebGL files
+        const [loaderJs, frameworkJsCompressed, wasmCompressed, dataCompressed] = await Promise.all([
+          fs.readFile(path.join(buildDir, "VibeTideMin.loader.js"), "utf-8"),
+          fs.readFile(path.join(buildDir, "VibeTideMin.framework.js.unityweb")),
+          fs.readFile(path.join(buildDir, "VibeTideMin.wasm.unityweb")),
+          fs.readFile(path.join(buildDir, "VibeTideMin.data.unityweb")),
+        ]);
+
+        // Decompress .unityweb files (they are gzip-compressed)
+        // Unity expects decompressed data when served via JavaScript
+        const frameworkJs = gunzipSync(frameworkJsCompressed);
+        const wasmBinary = gunzipSync(wasmCompressed);
+        const dataBinary = gunzipSync(dataCompressed);
+
+        // Also read index.html for DOM structure reference
+        const indexHtml = await fs.readFile(
+          path.join(baseDir, "VibeTideMin", "index.html"),
+          "utf-8"
+        );
+
+        return {
+          content: [{ type: "text", text: "Unity bundle loaded successfully" }],
+          structuredContent: {
+            loaderJs,  // Loader script (text, not base64)
+            frameworkJs: frameworkJs.toString("base64"),
+            wasmBinary: wasmBinary.toString("base64"),
+            dataBinary: dataBinary.toString("base64"),
+            indexHtml,
+            sizes: {
+              loaderJs: loaderJs.length,
+              frameworkJs: frameworkJs.length,
+              wasmBinary: wasmBinary.length,
+              dataBinary: dataBinary.length,
+            },
+          },
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: "text", text: `Failed to load Unity bundle: ${message}` }],
+          structuredContent: { error: message },
+        };
+      }
     },
   );
 
